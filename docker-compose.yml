@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  hitdl:
+    build: .
+    image: hitdl:latest
+    container_name: hitdl
+    volumes:
+      - ./music:/music
+      - ./config:/root/.config/hitdl
+    # Для использования docker-compose run hitdl <url>
+    # Для фонового поддержания можно заменить entrypoint
+    profiles: ["cli"]

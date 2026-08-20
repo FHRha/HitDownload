@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hitdl"
+version = "0.1.0"
+description = "A CLI tool to download music with tags and covers to a Navidrome library."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests",
+    "beautifulsoup4",
+    "mutagen",
+    "urllib3",
+    "typer[all]",
+    "rich"
+]
+
+[project.scripts]
+hitdl = "hitdl.cli:run_app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hitdl*"]

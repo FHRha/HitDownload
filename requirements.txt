@@ -1,0 +1,6 @@
+requests
+beautifulsoup4
+mutagen
+urllib3
+typer[all]
+rich
