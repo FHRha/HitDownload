@@ -10,12 +10,12 @@ def apply_metadata(mp3_path: str, artist: str, title: str, album: str = "Single"
     try:
         try:
             audio = MP3(mp3_path, ID3=ID3)
-        except ID3NoHeaderError:
-            audio = MP3(mp3_path)
-            audio.add_tags()
+            audio.delete()  # Полностью удаляем старые теги (водяные знаки и чужие обложки)
+        except Exception:
+            pass
 
-        if audio.tags is None:
-            audio.add_tags()
+        audio = MP3(mp3_path)
+        audio.add_tags()
 
         audio.tags.add(TPE1(encoding=3, text=artist))
         audio.tags.add(TIT2(encoding=3, text=title))

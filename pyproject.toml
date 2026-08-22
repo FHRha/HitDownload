@@ -15,7 +15,9 @@ dependencies = [
     "urllib3",
     "typer[all]",
     "rich",
-    "yandex-music"
+    "yandex-music",
+    "syncedlyrics",
+    "python-dotenv"
 ]
 
 [project.scripts]

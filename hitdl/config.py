@@ -2,6 +2,7 @@ import os
 import json
 from pathlib import Path
 import typer
+from dotenv import load_dotenv, set_key
 
 APP_NAME = "hitdl"
 
@@ -12,6 +13,12 @@ def get_config_dir() -> Path:
 
 def get_config_path() -> Path:
     return get_config_dir() / "config.json"
+
+def get_env_path() -> Path:
+    return get_config_dir() / ".env"
+
+# Инициализируем загрузку .env при импорте модуля
+load_dotenv(get_env_path())
 
 def load_config() -> dict:
     config_path = get_config_path()
@@ -39,10 +46,22 @@ def set_music_dir(path: str) -> None:
     save_config(config)
 
 def get_yandex_token() -> str:
-    config = load_config()
-    return os.getenv("YANDEX_MUSIC_TOKEN") or config.get("yandex_token") or ""
+    # Загружаем из .env или переменных окружения
+    return os.getenv("YANDEX_MUSIC_TOKEN") or ""
 
 def set_yandex_token(token: str) -> None:
-    config = load_config()
-    config["yandex_token"] = token
-    save_config(config)
+    env_path = get_env_path()
+    if not env_path.exists():
+        env_path.touch()
+    set_key(str(env_path), "YANDEX_MUSIC_TOKEN", token)
+    os.environ["YANDEX_MUSIC_TOKEN"] = token
+
+def get_genius_token() -> str:
+    return os.getenv("GENIUS_API_TOKEN") or ""
+
+def set_genius_token(token: str) -> None:
+    env_path = get_env_path()
+    if not env_path.exists():
+        env_path.touch()
+    set_key(str(env_path), "GENIUS_API_TOKEN", token)
+    os.environ["GENIUS_API_TOKEN"] = token
