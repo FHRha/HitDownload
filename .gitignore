@@ -26,3 +26,4 @@ env.bak/
 venv.bak/
 .DS_Store
 *.mp3
+test/

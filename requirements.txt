@@ -4,3 +4,4 @@ mutagen
 urllib3
 typer[all]
 rich
+yandex-music

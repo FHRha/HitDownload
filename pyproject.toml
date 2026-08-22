@@ -14,7 +14,8 @@ dependencies = [
     "mutagen",
     "urllib3",
     "typer[all]",
-    "rich"
+    "rich",
+    "yandex-music"
 ]
 
 [project.scripts]

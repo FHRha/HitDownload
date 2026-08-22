@@ -37,3 +37,12 @@ def set_music_dir(path: str) -> None:
     config = load_config()
     config["music_dir"] = path
     save_config(config)
+
+def get_yandex_token() -> str:
+    config = load_config()
+    return os.getenv("YANDEX_MUSIC_TOKEN") or config.get("yandex_token") or ""
+
+def set_yandex_token(token: str) -> None:
+    config = load_config()
+    config["yandex_token"] = token
+    save_config(config)
