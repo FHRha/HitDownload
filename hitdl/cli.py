@@ -190,8 +190,26 @@ def get(
 
                 if url.startswith("yandex://"):
                     token = get_yandex_token()
-                    if not token:
-                        search_logs = []
+                    yandex_success = False
+                    search_logs = []
+                    
+                    if token and track.get("track_obj"):
+                        try:
+                            info = track["track_obj"].get_download_info(get_direct_links=True)
+                            if info:
+                                mp3_infos = [i for i in info if i.codec == 'mp3']
+                                if mp3_infos:
+                                    best_info = sorted(mp3_infos, key=lambda x: x.bitrate_in_kbps, reverse=True)[0]
+                                    url = best_info.direct_link
+                                else:
+                                    url = info[0].direct_link
+                                yandex_success = True
+                            else:
+                                search_logs.append("Yandex Error: Нет прямых ссылок")
+                        except Exception as e:
+                            search_logs.append(f"Yandex Error: {e}")
+                            
+                    if not yandex_success:
                         def logger(msg):
                             import re
                             plain = re.sub(r'\[.*?\]', '', msg)
@@ -225,24 +243,8 @@ def get(
                                 search_logs.append(f"DL Error: {e}")
                                 
                         if not success:
-                            dl_reasons = " | ".join([log for log in search_logs if log.startswith("DL Error")])
+                            dl_reasons = " | ".join([log for log in search_logs if log.startswith("DL Error") or log.startswith("Yandex Error")])
                             cleanup(f"[red]ERROR Ссылки найдены, но скачивание сорвалось: {track_artist} - {track['title']} ({dl_reasons})[/red]", True)
-                            return
-                            
-                    elif track.get("track_obj"):
-                        try:
-                            info = track["track_obj"].get_download_info(get_direct_links=True)
-                            if info:
-                                mp3_infos = [i for i in info if i.codec == 'mp3']
-                                if mp3_infos:
-                                    best_info = sorted(mp3_infos, key=lambda x: x.bitrate_in_kbps, reverse=True)[0]
-                                    url = best_info.direct_link
-                                else:
-                                    url = info[0].direct_link
-                            else:
-                                raise Exception("Нет прямых ссылок")
-                        except Exception as e:
-                            cleanup(f"[red]ERROR Ошибка получения ссылки Yandex: {e}[/red]", True)
                             return
                             
                 dl_error_msg = ""
