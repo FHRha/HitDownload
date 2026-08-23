@@ -1,12 +1,12 @@
 import requests
 from mutagen.mp3 import MP3
-from mutagen.id3 import ID3, TIT2, TPE1, TALB, APIC, ID3NoHeaderError
+from mutagen.id3 import ID3, TIT2, TPE1, TPE2, TALB, APIC, ID3NoHeaderError
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 }
 
-def apply_metadata(mp3_path: str, artist: str, title: str, album: str = "Single", cover_url: str = None) -> None:
+def apply_metadata(mp3_path: str, artist: str, title: str, album: str = "Single", cover_url: str = None, album_artist: str = None) -> None:
     try:
         try:
             audio = MP3(mp3_path, ID3=ID3)
@@ -20,6 +20,8 @@ def apply_metadata(mp3_path: str, artist: str, title: str, album: str = "Single"
         audio.tags.add(TPE1(encoding=3, text=artist))
         audio.tags.add(TIT2(encoding=3, text=title))
         audio.tags.add(TALB(encoding=3, text=album))
+        if album_artist:
+            audio.tags.add(TPE2(encoding=3, text=album_artist))
 
         if cover_url:
             try:

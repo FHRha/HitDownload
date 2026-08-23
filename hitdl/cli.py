@@ -15,7 +15,7 @@ from rich.layout import Layout
 from rich.text import Text
 from rich.table import Table
 
-from hitdl.config import get_music_dir, set_music_dir, get_config_dir, get_yandex_token, set_genius_token
+from hitdl.config import get_music_dir, set_music_dir, get_env_path, get_yandex_token, set_genius_token
 from hitdl.parser import parse_url, search_hitmo, search_youtube
 from hitdl.downloader import download_file, download_youtube_track
 from hitdl.metadata import apply_metadata
@@ -29,20 +29,25 @@ def sanitize_filename(name: str) -> str:
 @app.command()
 def wizard():
     """Мастер первоначальной настройки."""
-    console.print(Panel("[bold green]Добро пожаловать в мастер настройки HitDownload![/bold green]", box=ROUNDED))
-    default_dir = str(Path.home() / "Music")
-    music_dir = typer.prompt("Введите путь к директории для музыки (Navidrome)", default=default_dir)
-    set_music_dir(music_dir)
-    console.print(f"[green]OK Директория сохранена:[/green] {music_dir}")
+    from hitdl.config import get_music_dir, get_genius_token, get_yandex_token, set_yandex_token
     
-    genius_token = typer.prompt("Введите токен Genius API (оставьте пустым для пропуска)", default="", show_default=False)
-    if genius_token.strip():
+    console.print(Panel("[bold green]Добро пожаловать в мастер настройки HitDownload![/bold green]", box=ROUNDED))
+    
+    current_music_dir = get_music_dir()
+    music_dir = typer.prompt("Введите путь к директории для музыки (Navidrome)", default=current_music_dir)
+    set_music_dir(music_dir)
+    console.print(f"[green]OK Директория сохранена в .env:[/green] {music_dir}")
+    
+    current_genius = get_genius_token()
+    genius_token = typer.prompt("Введите токен Genius API (оставьте пустым для пропуска)", default=current_genius, show_default=True if current_genius else False)
+    if genius_token.strip() or current_genius:
+        # If user leaves it as current, or changes it, set it
         set_genius_token(genius_token.strip())
         console.print("[green]OK Токен Genius сохранен в .env[/green]")
         
-    from hitdl.config import set_yandex_token
-    yandex_token = typer.prompt("Введите токен Yandex Music (позволяет качать полные треки напрямую с Яндекса, оставьте пустым для пропуска)", default="", show_default=False)
-    if yandex_token.strip():
+    current_yandex = get_yandex_token()
+    yandex_token = typer.prompt("Введите токен Yandex Music (позволяет качать полные треки напрямую с Яндекса, оставьте пустым для пропуска)", default=current_yandex, show_default=True if current_yandex else False)
+    if yandex_token.strip() or current_yandex:
         set_yandex_token(yandex_token.strip())
         console.print("[green]OK Токен Yandex Music сохранен в .env[/green]")
 
@@ -57,10 +62,10 @@ def clean():
 @app.command()
 def uninstall():
     """Удалить утилиту и ее конфигурацию."""
-    config_dir = get_config_dir()
-    if config_dir.exists():
-        shutil.rmtree(config_dir)
-        console.print(f"[green]OK Конфигурация удалена из {config_dir}[/green]")
+    env_path = get_env_path()
+    if env_path.exists():
+        env_path.unlink()
+        console.print(f"[green]OK Конфигурация удалена из {env_path}[/green]")
     console.print("[yellow]Для полного удаления выполните: pip uninstall hitdl[/yellow]")
 
 @app.command()
@@ -148,7 +153,18 @@ def get(
         
         with Live(progress_panel, console=console, refresh_per_second=10):
             def process_track(track):
-                artist = sanitize_filename(track.get("album_artist") or track["artist"].split(", ")[0])[:50]
+                # Нормализация регистра для объединения SQWOZ BAB и Sqwoz Bab
+                track["artist"] = track.get("artist", "Unknown Artist").title()
+                
+                raw_artist = track.get("album_artist")
+                if not raw_artist:
+                    import re
+                    first_artist = track["artist"].split(",")[0].strip()
+                    first_artist = re.split(r'(?i)\s+(feat\.?|ft\.?|and|&|with|и|x|х)\s+', first_artist)[0].strip()
+                    raw_artist = first_artist
+                
+                raw_artist = raw_artist.title()
+                artist = sanitize_filename(raw_artist)[:50]
                 title = sanitize_filename(track["title"])
                 album = sanitize_filename(track["album"])
                 
@@ -261,7 +277,7 @@ def get(
                 if success:
                     progress.update(dl_task, description=f"[blue]Теги: {desc}")
                     try:
-                        apply_metadata(file_path, track["artist"], track["title"], track["album"], track["cover_url"])
+                        apply_metadata(file_path, track["artist"], track["title"], track["album"], track["cover_url"], album_artist=artist)
                         
                         if lyrics:
                             progress.update(dl_task, description=f"[cyan]Текст: {desc}")
@@ -432,34 +448,43 @@ def fetch_lyrics(
     console.print("[bold green]Готово![/bold green]")
 
 def interactive_menu():
-    console.print(Panel("[bold cyan]HitDownload - Главное меню[/bold cyan]", box=ROUNDED))
-    console.print("1. [green]Скачать музыку[/green] (ввести ссылки)")
-    console.print("2. [yellow]Настройки (Wizard)[/yellow]")
-    console.print("3. [blue]Проверка системы (Repair)[/blue]")
-    console.print("4. [magenta]Очистка кэша (Clean)[/magenta]")
-    console.print("5. [red]Удаление утилиты (Uninstall)[/red]")
-    console.print("0. Выход")
-    
-    choice = typer.prompt("Выберите действие", type=int, default=1)
-    
-    if choice == 1:
-        urls_str = typer.prompt("Введите ссылки (через запятую)")
-        sys.argv = [sys.argv[0], "get", urls_str]
-        app()
-    elif choice == 2:
-        sys.argv = [sys.argv[0], "wizard"]
-        app()
-    elif choice == 3:
-        sys.argv = [sys.argv[0], "repair"]
-        app()
-    elif choice == 4:
-        sys.argv = [sys.argv[0], "clean"]
-        app()
-    elif choice == 5:
-        sys.argv = [sys.argv[0], "uninstall"]
-        app()
-    else:
-        console.print("Выход.")
+    while True:
+        console.print(Panel("[bold cyan]HitDownload - Главное меню[/bold cyan]", box=ROUNDED))
+        console.print("1. [green]Скачать музыку[/green] (ввести ссылки)")
+        console.print("2. [yellow]Настройки (Wizard)[/yellow]")
+        console.print("3. [blue]Проверка системы (Repair)[/blue]")
+        console.print("4. [magenta]Очистка кэша (Clean)[/magenta]")
+        console.print("5. [red]Удаление утилиты (Uninstall)[/red]")
+        console.print("0. Выход")
+        
+        choice = typer.prompt("Выберите действие", type=int, default=1)
+        
+        if choice == 1:
+            urls_str = typer.prompt("Введите ссылки (через запятую)")
+            sys.argv = [sys.argv[0], "get", urls_str]
+        elif choice == 2:
+            sys.argv = [sys.argv[0], "wizard"]
+        elif choice == 3:
+            sys.argv = [sys.argv[0], "repair"]
+        elif choice == 4:
+            sys.argv = [sys.argv[0], "clean"]
+        elif choice == 5:
+            sys.argv = [sys.argv[0], "uninstall"]
+        elif choice == 0:
+            console.print("Выход.")
+            break
+        else:
+            console.print("Неизвестный выбор.")
+            continue
+            
+        try:
+            app()
+        except SystemExit:
+            pass
+            
+        console.print("\n[dim]--- Нажмите Enter для возврата в меню ---[/dim]")
+        input()
+        console.print("\n" * 2)
 
 def run_app():
     if len(sys.argv) == 1:
